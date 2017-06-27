@@ -2,7 +2,7 @@ Hello
 =====
 globox is a platform game for the terminal. It features an ASCII based
 interface which don't rely on any external library so it should work out of the
-box on any VT100 compatible terminal.
+box on a VT100 compatible terminal.
 
 Status
 ======
