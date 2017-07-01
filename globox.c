@@ -39,10 +39,18 @@ char *argv0;
 /* VT100 escape sequences */
 #define CLEAR           L"\33[2J"
 #define CLEARLN         L"\33[2K"
-#define CLEARRIGHT      L"\33[K"
+#define CLEARRIGHT      L"\33[0K"
 #define CURPOS          L"\33[%d;%dH"
 #define CURSON          L"\33[?25h"
 #define CURSOFF         L"\33[?25l"
+
+#if defined CTRL && defined _AIX
+  #undef CTRL
+#endif
+#ifndef CTRL
+  #define CTRL(k)   ((k) & 0x1F)
+#endif
+#define CTRL_ALT(k) ((k) + (129 - 'a'))
 
 /* object flags */
 #define OF_OPENUP       1<<1
@@ -545,6 +553,7 @@ keypress(void) {
 	for(i = 0; i < LENGTH(keys); ++i)
 		if(keys[i].key == key)
 			keys[i].func(&keys[i].arg);
+	/* XXX getkey()? */
 	while(getchar() != EOF); /* discard remaining input */
 }
 
