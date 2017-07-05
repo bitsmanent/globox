@@ -279,7 +279,6 @@ choose(char *opts, const wchar_t *msgstr, ...) {
 void
 cleanup(void) {
 	freescene();
-	ioblock(1);
 	tcsetattr(0, TCSANOW, &origti);
 	wprintf(CURSON);
 }
@@ -502,8 +501,7 @@ ioblock(int block) {
 
 	tcgetattr(0, &ti);
 	ti.c_cc[VMIN] = block;
-	if(!block)
-		ti.c_cc[VTIME] = 0;
+	ti.c_cc[VTIME] = 0;
 	tcsetattr(0, TCSANOW, &ti);
 }
 
@@ -658,6 +656,7 @@ restart(const Arg *arg) {
 
 void
 run(void) {
+	ioblock(0);
 	while(running) {
 		while(cols < scene->w || rows < scene->h) {
 			mvprintf(1, 1, L"Terminal too small.");
@@ -670,6 +669,7 @@ run(void) {
 		if(sleepu(TICK))
 			die("%s: error while sleeping\n", argv0);
 	}
+	ioblock(1);
 	mvprintf(1, cols, L"%ls", CLEARLN);
 }
 
@@ -686,11 +686,10 @@ setup(void) {
 	sigaction(SIGWINCH, &sa, NULL);
 
 	tcgetattr(0, &origti);
-	ti.c_lflag &= ~(ECHO | ICANON);
+	cfmakeraw(&ti);
 	ti.c_iflag |= ICRNL;
-	tcsetattr(0, TCSAFLUSH, &ti);
+	tcsetattr(0, TCSANOW, &ti);
 	wprintf(CURSOFF);
-	ioblock(0);
 
 	ioctl(0, TIOCGWINSZ, &ws);
 	resize(ws.ws_row, ws.ws_col);
