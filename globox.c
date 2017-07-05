@@ -263,7 +263,7 @@ choose(char *opts, const wchar_t *msgstr, ...) {
 	va_end(ap);
 
 	ioblock(1);
-	while(!(o && *o) && (c = getchar())) {
+	while(!(o && *o) && (c = fgetwc(stdin))) {
 		if(c == '\n')
 			o = &opts[0];
 		else
@@ -470,11 +470,11 @@ freescene(void) {
 /* XXX quick'n dirty implementation */
 int
 getkey(void) {
-	int key = getchar(), c;
+	int key = fgetwc(stdin), c;
 
-	if(key != '\x1b' || getchar() != '[')
+	if(key != '\x1b' || fgetwc(stdin) != '[')
 		return key;
-	switch((c = getchar())) {
+	switch((c = fgetwc(stdin))) {
 	case 'A': key = KeyUp; break;
 	case 'B': key = KeyDown; break;
 	case 'C': key = KeyRight; break;
@@ -499,10 +499,11 @@ getkey(void) {
 void
 ioblock(int block) {
 	struct termios ti;
-	int v = block ? 1 : 0;
 
 	tcgetattr(0, &ti);
-	ti.c_cc[VTIME] = ti.c_cc[VMIN] = v;
+	ti.c_cc[VMIN] = block;
+	if(!block)
+		ti.c_cc[VTIME] = 0;
 	tcsetattr(0, TCSANOW, &ti);
 }
 
@@ -553,8 +554,7 @@ keypress(void) {
 	for(i = 0; i < LENGTH(keys); ++i)
 		if(keys[i].key == key)
 			keys[i].func(&keys[i].arg);
-	/* XXX getkey()? */
-	while(getchar() != EOF); /* discard remaining input */
+	while(fgetwc(stdin) != WEOF); /* discard remaining input */
 }
 
 void
