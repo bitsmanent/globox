@@ -23,7 +23,6 @@
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <time.h>
-#include <wchar.h>
 
 #include "arg.h"
 char *argv0;
@@ -33,16 +32,16 @@ char *argv0;
 #define DELAY(B, K, D)  (++(B)->delays[(K)] < (D) ? 1 : ((B)->delays[(K)] = 0))
 #define ISSET(F, B)     ((F) & (B))
 #define TICK		64000
-#define VACUUM          L' '
-#define LINESEP         L'\n'
+#define VACUUM          ' '
+#define LINESEP         '\n'
 
 /* VT100 escape sequences */
-#define CLEAR           L"\33[2J"
-#define CLEARLN         L"\33[2K"
-#define CLEARRIGHT      L"\33[0K"
-#define CURPOS          L"\33[%d;%dH"
-#define CURSON          L"\33[?25h"
-#define CURSOFF         L"\33[?25l"
+#define CLEAR           "\33[2J"
+#define CLEARLN         "\33[2K"
+#define CLEARRIGHT      "\33[0K"
+#define CURPOS          "\33[%d;%dH"
+#define CURSON          "\33[?25h"
+#define CURSOFF         "\33[?25l"
 
 #if defined CTRL && defined _AIX
   #undef CTRL
@@ -77,12 +76,12 @@ typedef union {
 
 typedef struct {
 	char *name;
-	wchar_t *map;
+	char *map;
 } Level;
 
 typedef struct Object Object;
 struct Object {
-	wchar_t sym;
+	char sym;
 	unsigned int flags;
 	int (*ontick)(Object *);
 	const Arg arg;
@@ -114,7 +113,7 @@ void attach(Block *b);
 int cannon(Object *o);
 int cannonball(Object *o);
 void checkgame(void);
-char choose(char *opts, const wchar_t *msgstr, ...);
+char choose(char *opts, const char *msgstr, ...);
 void cleanup(void);
 void detach(Block *b);
 void die(const char *errstr, ...);
@@ -131,8 +130,8 @@ void ioblock(int block);
 void jump(const Arg *arg);
 void keypress(void);
 void level(int lev);
-int mvprintf(int x, int y, wchar_t *fmt, ...);
-Object *objbysym(wchar_t sym);
+int mvprintf(int x, int y, char *fmt, ...);
+Object *objbysym(char sym);
 void objwalk(Object *o, int offset);
 void quit(const Arg *arg);
 void resize(int x, int y);
@@ -245,25 +244,25 @@ checkgame(void) {
 	}
 	if(np)
 		return;
-	if(choose("yn", L"Level failed. Play again ([y]/n)?") == 'y')
+	if(choose("yn", "Level failed. Play again ([y]/n)?") == 'y')
 		level(lev);
 	else
 		running = 0;
 }
 
 char
-choose(char *opts, const wchar_t *msgstr, ...) {
+choose(char *opts, const char *msgstr, ...) {
 	va_list ap;
 	int c;
 	char *o = NULL;
 
 	va_start(ap, msgstr);
-	fwprintf(stdout, CURPOS, cols - 1, 0);
-	vfwprintf(stdout, msgstr, ap);
+	fprintf(stdout, CURPOS, cols - 1, 0);
+	vfprintf(stdout, msgstr, ap);
 	va_end(ap);
 
 	ioblock(1);
-	while(!(o && *o) && (c = fgetwc(stdin))) {
+	while(!(o && *o) && (c = getkey()) != EOF) {
 		if(c == '\n')
 			o = &opts[0];
 		else
@@ -271,7 +270,7 @@ choose(char *opts, const wchar_t *msgstr, ...) {
 				if(c == *o)
 					break;
 	}
-	fwprintf(stdout, CURPOS CLEARLN, cols - 1, 0);
+	fprintf(stdout, CURPOS CLEARLN, cols - 1, 0);
 	ioblock(0);
 	return *o;
 }
@@ -280,7 +279,7 @@ void
 cleanup(void) {
 	freescene();
 	tcsetattr(0, TCSANOW, &origti);
-	wprintf(CURSON);
+	printf(CURSON);
 }
 
 void
@@ -328,7 +327,7 @@ draw(void) {
 	}
 	for(b = scene->blocks; b; b = b->next)
 		if(b->_draw)
-			mvprintf(b->x, b->y + 1, L"%lc", b->o->sym);
+			mvprintf(b->x, b->y + 1, "%c", b->o->sym);
 	drawbar();
 }
 
@@ -337,15 +336,15 @@ drawbar(void) {
 	Block *p;
 	int i, len;
 
-	len = mvprintf(1, 1, L"[%d|%dx%d] %s ::", lev, scene->w, scene->h, levels[lev].name);
+	len = mvprintf(1, 1, "[%d|%dx%d] %s ::", lev, scene->w, scene->h, levels[lev].name);
 	for(p = scene->blocks; p; p = p->next) {
 		if(!(p->o->flags & OF_PLAYER))
 			continue;
-		i = mvprintf(len+1, 1, L" %lc(*%d)(%dx%d)",
+		i = mvprintf(len+1, 1, " %c(*%d)(%dx%d)",
 			p->o->sym, p->energy, p->x, p->y);
 		len += i;
 	}
-	mvprintf(len+1, 1, L"%ls", CLEARRIGHT);
+	mvprintf(len+1, 1, "%s", CLEARRIGHT);
 }
 
 int
@@ -429,13 +428,13 @@ finish(Object *o) {
 	if(!np)
 		return 0;
 	if(++lev >= LENGTH(levels)) {
-		if(choose("yn", L"The game has finished. Play again ([y]/n)?") == 'n') {
+		if(choose("yn", "The game has finished. Play again ([y]/n)?") == 'n') {
 			running = 0;
 			return 1;
 		}
 		lev = 0;
 	}
-	else if(choose("yn", L"Level completed. Play next ([y]/n)?") == 'n') {
+	else if(choose("yn", "Level completed. Play next ([y]/n)?") == 'n') {
 		running = 0;
 		return 1;
 	}
@@ -469,11 +468,11 @@ freescene(void) {
 /* XXX quick'n dirty implementation */
 int
 getkey(void) {
-	int key = fgetwc(stdin), c;
+	int key = getchar(), c;
 
-	if(key != '\x1b' || fgetwc(stdin) != '[')
+	if(key != '\x1b' || getchar() != '[')
 		return key;
-	switch((c = fgetwc(stdin))) {
+	switch((c = getchar())) {
 	case 'A': key = KeyUp; break;
 	case 'B': key = KeyDown; break;
 	case 'C': key = KeyRight; break;
@@ -489,7 +488,7 @@ getkey(void) {
 	case '8': key = KeyEnd; break;
 	default:
 		/* debug */
-		mvprintf(1, rows, L"Unknown char: %c (%d)", c, c);
+		mvprintf(1, rows, "Unknown char: %c (%d)", c, c);
 		break;
 	}
 	return key;
@@ -552,7 +551,7 @@ keypress(void) {
 	for(i = 0; i < LENGTH(keys); ++i)
 		if(keys[i].key == key)
 			keys[i].func(&keys[i].arg);
-	while(fgetwc(stdin) != WEOF); /* discard remaining input */
+	while(getkey() != EOF); /* discard remaining input */
 }
 
 void
@@ -560,14 +559,14 @@ level(int num) {
 	Object *o;
 	Block *b;
 	int i, len, x, y;
-	wchar_t *map;
+	char *map;
 
 	if(num >= LENGTH(levels))
 		die("%s: level %d does not exists.\n", argv0, num);
 	freescene();
 	scene = ecalloc(1, sizeof(Scene));
 	map = levels[num].map;
-	len = wcslen(map);
+	len = strlen(map);
 	x = y = 1;
 	for(i = 0; i < len; ++i) {
 		if(map[i] == LINESEP) {
@@ -602,23 +601,23 @@ level(int num) {
 	for(b = scene->blocks; b; b = b->next)
 		if(ISSET(b->o->flags, OF_PLAYER) && !b->energy)
 			b->energy = b->o->arg.i;
-	wprintf(CLEAR);
+	printf(CLEAR);
 }
 
 int
-mvprintf(int x, int y, wchar_t *fmt, ...) {
+mvprintf(int x, int y, char *fmt, ...) {
 	va_list ap;
 	int len;
 
-	wprintf(CURPOS, y, x);
+	printf(CURPOS, y, x);
 	va_start(ap, fmt);
-	len = vfwprintf(stdout, fmt, ap);
+	len = vfprintf(stdout, fmt, ap);
 	va_end(ap);
 	return len;
 }
 
 Object *
-objbysym(wchar_t sym) {
+objbysym(char sym) {
 	int i;
 
 	for(i = 0; i < LENGTH(objects); ++i)
@@ -638,7 +637,7 @@ objwalk(Object *o, int offset) {
 
 void
 quit(const Arg *arg) {
-	if(!arg->i || choose("ny", L"Are you sure (y/[n])?") == 'y')
+	if(!arg->i || choose("ny", "Are you sure (y/[n])?") == 'y')
 		running = 0;
 }
 
@@ -650,7 +649,7 @@ resize(int x, int y) {
 
 void
 restart(const Arg *arg) {
-	if(choose("ny", L"Restart the level (y/[n]?") == 'y')
+	if(choose("ny", "Restart the level (y/[n]?") == 'y')
 		level(lev);
 }
 
@@ -659,7 +658,7 @@ run(void) {
 	ioblock(0);
 	while(running) {
 		while(cols < scene->w || rows < scene->h) {
-			mvprintf(1, 1, L"Terminal too small.");
+			mvprintf(1, 1, "Terminal too small.");
 			sleepu(10000);
 		}
 		draw();
@@ -670,7 +669,7 @@ run(void) {
 			die("%s: error while sleeping\n", argv0);
 	}
 	ioblock(1);
-	mvprintf(1, cols, L"%ls", CLEARLN);
+	mvprintf(1, cols, "%s", CLEARLN);
 }
 
 void
@@ -689,7 +688,7 @@ setup(void) {
 	cfmakeraw(&ti);
 	ti.c_iflag |= ICRNL;
 	tcsetattr(0, TCSANOW, &ti);
-	wprintf(CURSOFF);
+	printf(CURSOFF);
 
 	ioctl(0, TIOCGWINSZ, &ws);
 	resize(ws.ws_row, ws.ws_col);
@@ -701,7 +700,7 @@ sigwinch(int unused) {
 
 	ioctl(0, TIOCGWINSZ, &ws);
 	resize(ws.ws_row, ws.ws_col);
-	wprintf(CLEAR);
+	printf(CLEAR);
 }
 
 int
