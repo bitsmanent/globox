@@ -272,7 +272,7 @@ choose(char *opts, const char *msgstr, ...) {
 	}
 	fprintf(stdout, CURPOS CLEARLN, cols - 1, 0);
 	ioblock(0);
-	return *o;
+	return *(o ? o : opts);
 }
 
 void
@@ -500,7 +500,6 @@ ioblock(int block) {
 
 	tcgetattr(0, &ti);
 	ti.c_cc[VMIN] = block;
-	ti.c_cc[VTIME] = 0;
 	tcsetattr(0, TCSANOW, &ti);
 }
 
@@ -687,7 +686,9 @@ setup(void) {
 	tcgetattr(0, &origti);
 	cfmakeraw(&ti);
 	ti.c_iflag |= ICRNL;
-	tcsetattr(0, TCSANOW, &ti);
+	ti.c_cc[VMIN] = 0;
+	ti.c_cc[VTIME] = 0;
+	tcsetattr(0, TCSAFLUSH, &ti);
 	printf(CURSOFF);
 
 	ioctl(0, TIOCGWINSZ, &ws);
