@@ -61,6 +61,7 @@ char *argv0;
 #define OF_STICK        1<<7
 #define OF_FALL         1<<8
 #define OF_PUSHABLE     1<<9
+#define OF_AI           1<<10
 #define OF_OPEN         (OF_OPENUP|OF_OPENRIGHT|OF_OPENDOWN|OF_OPENLEFT)
 
 /* enums */
@@ -417,7 +418,7 @@ finish(Object *o) {
 	int np = 0;
 
 	for(p = scene->blocks; p; p = p->next) {
-		if(!ISSET(p->o->flags, OF_PLAYER) || p->energy <= 0)
+		if(!ISSET(p->o->flags, OF_PLAYER) || p->energy <= 0 || ISSET(p->o->flags, OF_AI))
 			continue;
 		++np;
 		for(b = scene->blocks; b; b = b->next)
