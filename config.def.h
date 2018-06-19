@@ -26,6 +26,7 @@ Level levels[] = {
 	{ "Reach the exit", lev2 },
 	{ "Run", lev3 },
 	{ "Climb up", lev4 },
+	{ "Steep fall", lev5 },
 	{ "Welcome to the arena", arena },
 };
 
