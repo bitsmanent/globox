@@ -229,7 +229,7 @@ checkgame(void) {
 	int np = 0;
 
 	for(p = scene->blocks; p;) {
-		if(!ISSET(p->o->flags, OF_PLAYER)) {
+		if(!ISSET(p->o->flags, OF_PLAYER) || ISSET(p->o->flags, OF_AI)) {
 			p = p->next;
 			continue;
 		}
@@ -760,16 +760,25 @@ walkright(const Arg *arg) {
 
 int
 zombie(Object *o) {
-	Block *c;
+	Block *b, *p;
 	int t;
 
-	for(c = scene->blocks; c; c = c->next) {
-		if(c->o->ontick != zombie || DELAY(c, DelayZombie, 4))
+	for(b = scene->blocks; b; b = b->next) {
+		if(b->o->ontick != zombie)
+			continue;
+		/* collide */
+		for(p = scene->blocks; p; p = p->next)
+			if(p->o->ontick != zombie && ISSET(p->o->flags, OF_PLAYER)
+			&& p->x == b->x && p->y == b->y)
+				--p->energy;
+		/* walk (maybe) */
+		if(DELAY(b, DelayZombie, 4))
 			continue;
 		t = rand() % 3;
 		if(t == 2)
 			t = -1;
-		objwalk(c->o, t);
+		if(t)
+			objwalk(b->o, t);
 	}
 	return 0;
 }
