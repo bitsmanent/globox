@@ -65,7 +65,7 @@ char *argv0;
 
 /* enums */
 enum { KeyUp = -50, KeyDown, KeyRight, KeyLeft, KeyHome, KeyEnd, KeyDel, KeyPgUp, KeyPgDw };
-enum { DelayFalling, DelayCannon, DelayCannonBall, DelayMax };
+enum { DelayCannon, DelayCannonBall, DelayFalling, DelayZombie, DelayMax };
 
 typedef union {
 	int i;
@@ -144,6 +144,7 @@ void usage(void);
 void walk(Block *blk, int offset);
 void walkleft(const Arg *arg);
 void walkright(const Arg *arg);
+int zombie(Object *o);
 
 /* variables */
 Scene *scene;
@@ -596,7 +597,7 @@ level(int num) {
 		++x;
 	}
 	scene->h = y + 1;
-	/* revive the zombies */
+	/* revive the zombies players */
 	for(b = scene->blocks; b; b = b->next)
 		if(ISSET(b->o->flags, OF_PLAYER) && !b->energy)
 			b->energy = b->o->arg.i;
@@ -757,12 +758,29 @@ walkright(const Arg *arg) {
 }
 
 int
+zombie(Object *o) {
+	Block *c;
+	int t;
+
+	for(c = scene->blocks; c; c = c->next) {
+		if(c->o->ontick != zombie || DELAY(c, DelayZombie, 4))
+			continue;
+		t = rand() % 3;
+		if(t == 2)
+			t = -1;
+		objwalk(c->o, t);
+	}
+	return 0;
+}
+
+int
 main(int argc, char *argv[]) {
 	ARGBEGIN {
 	case 'n': lev = atoi(EARGF(usage())); break;
 	case 'v': die("globox-"VERSION"\n");
 	default: usage();
 	} ARGEND;
+	srand(time(NULL));
 	setup();
 	level(lev);
 	run();
