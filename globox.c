@@ -229,12 +229,13 @@ checkgame(void) {
 	int np = 0;
 
 	for(p = scene->blocks; p;) {
-		if(!ISSET(p->o->flags, OF_PLAYER) || ISSET(p->o->flags, OF_AI)) {
+		if(!ISSET(p->o->flags, OF_PLAYER)) {
 			p = p->next;
 			continue;
 		}
 		if(p->energy > 0) {
-			++np;
+			if(!ISSET(p->o->flags, OF_AI))
+				++np;
 			p = p->next;
 		}
 		else {
