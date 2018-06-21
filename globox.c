@@ -181,44 +181,39 @@ cannon(Object *o) {
 
 int
 cannonball(Object *o) {
-	Block *cb, *b, *p, *fb = NULL;
-	int nx, nblk, offset;
+	Block *cb, *b, *p = NULL, *rm = NULL;
+	int out;
 
 	for(cb = scene->blocks; cb; cb = cb->next) {
 		if(cb->o->ontick != cannonball || DELAY(cb, DelayCannonBall, 2))
 			continue;
-		if(fb) {
-			detach(fb);
-			free(fb);
-			fb = NULL;
-		}
-		offset = cb->o->arg.i;
-		nx = cb->x + offset;
-		nblk = 0;
-		p = NULL;
+		cb->x += cb->o->arg.i;
+		out = 1;
 		for(b = scene->blocks; b; b = b->next) {
-			if(b->x == nx && b->y == cb->y) {
-				++nblk;
-				if(!ISSET(b->o->flags, offset > 0 ? OF_OPENLEFT : OF_OPENRIGHT))
-					fb = cb;
+			if(cb != b && b->x == cb->x && b->y == cb->y) {
+				out = 0;
+				if(!p && ISSET(b->o->flags, OF_PLAYER)) {
+					p = b;
+					continue;
+				}
+				if(!ISSET(b->o->flags, cb->o->arg.i > 0 ? OF_OPENLEFT : OF_OPENRIGHT)) {
+					rm = cb;
+					break;
+				}
 			}
-			if(b->x == cb->x && b->y == cb->y && ISSET(b->o->flags, OF_PLAYER))
-				p = b;
 		}
-		if(!nblk) {
-			fb = cb;
-			continue;
-		}
+		if(out)
+			rm = cb;
 		if(p) {
-			fb = cb;
 			p->energy -= 2;
+			p = NULL;
 		}
-		cb->x = nx;
-	}
-	if(fb) {
-		detach(fb);
-		free(fb);
-		fb = NULL;
+		if(rm) {
+			cb = cb->next;
+			detach(rm);
+			free(rm);
+			rm = NULL;
+		}
 	}
 	return 0;
 }
@@ -314,16 +309,11 @@ draw(void) {
 	for(b = scene->blocks; b; b = b->next) {
 		if(!b->_draw)
 			continue;
-		t = NULL;
+		t = b;
 		for(b2 = scene->blocks; b2; b2 = b2->next)
-			if(ISSET(b2->o->flags, OF_PLAYER) && b->x == b2->x && b->y == b2->y && (t = b2))
-				break;
-		if(!t)
-			for(b2 = scene->blocks; b2; b2 = b2->next)
-				if(!ISSET(b2->o->flags, OF_OPEN) && b->x == b2->x && b->y == b2->y && (t = b2))
-					break;
-		if(!t)
-			t = b;
+			if((ISSET(b2->o->flags, OF_PLAYER | OF_AI) || !ISSET(b2->o->flags, OF_OPEN))
+			&& b->x == b2->x && b->y == b2->y)
+				t = b2;
 		for(b2 = scene->blocks; b2; b2 = b2->next)
 			if(b2 != t && t->x == b2->x && t->y == b2->y)
 				b2->_draw = 0;
@@ -586,7 +576,7 @@ level(int num) {
 		b->x = x;
 		b->y = y;
 		attach(b);
-		if(ISSET(o->flags, OF_PLAYER | OF_FALL)) {
+		if(ISSET(o->flags, OF_PLAYER | OF_FALL | OF_AI)) {
 			o = objbysym(VACUUM);
 			if(o) {
 				b = ecalloc(1, sizeof(Block));
@@ -651,7 +641,7 @@ resize(int x, int y) {
 
 void
 restart(const Arg *arg) {
-	if(choose("ny", "Restart the level (y/[n]?") == 'y')
+	if(choose("ny", "Restart the level (y/[n])?") == 'y')
 		level(lev);
 }
 

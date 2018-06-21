@@ -1,1 +1,2 @@
 - move terminal handling stuff into a library
+- keep energy between levels
