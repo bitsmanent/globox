@@ -83,6 +83,7 @@ typedef struct {
 typedef struct Object Object;
 struct Object {
 	char sym;
+	int zidx;
 	unsigned int flags;
 	int (*ontick)(Object *);
 	const Arg arg;
@@ -311,8 +312,8 @@ draw(void) {
 			continue;
 		t = b;
 		for(b2 = scene->blocks; b2; b2 = b2->next)
-			if((ISSET(b2->o->flags, OF_PLAYER | OF_AI) || !ISSET(b2->o->flags, OF_OPEN))
-			&& b->x == b2->x && b->y == b2->y)
+			if(b2 != b && b2->x == b->x && b2->y == b->y
+			&& b2->o->zidx > t->o->zidx)
 				t = b2;
 		for(b2 = scene->blocks; b2; b2 = b2->next)
 			if(b2 != t && t->x == b2->x && t->y == b2->y)
