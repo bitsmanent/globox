@@ -752,6 +752,7 @@ walkright(const Arg *arg) {
 
 int
 zombie(Object *o) {
+	Arg arg;
 	Block *b, *p;
 	int t;
 
@@ -766,11 +767,20 @@ zombie(Object *o) {
 		/* walk (maybe) */
 		if(DELAY(b, DelayZombie, 4))
 			continue;
+		/* detect near cannon balls */
+		for(p = scene->blocks; p; p = p->next)
+			if(p->o->ontick == cannonball && p->y == b->y
+			&& p->x >= b->x - 3 && p->x <= b->x + 3)
+				break;
+		if(p) {
+			arg.v = b->o;
+			jump(&arg);
+		}
 		t = rand() % 3;
 		if(t == 2)
 			t = -1;
 		if(t)
-			objwalk(b->o, t);
+			walk(b, t);
 	}
 	return 0;
 }
