@@ -676,7 +676,6 @@ setup(void) {
 	sigemptyset(&sa.sa_mask);
 	sa.sa_handler = sigwinch;
 	sigaction(SIGWINCH, &sa, NULL);
-
 	tcgetattr(0, &origti);
 	cfmakeraw(&ti);
 	ti.c_iflag |= ICRNL;
@@ -684,7 +683,6 @@ setup(void) {
 	ti.c_cc[VTIME] = 0;
 	tcsetattr(0, TCSAFLUSH, &ti);
 	printf(CURSOFF);
-
 	ioctl(0, TIOCGWINSZ, &ws);
 	resize(ws.ws_row, ws.ws_col);
 }
