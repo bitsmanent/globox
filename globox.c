@@ -23,6 +23,7 @@
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "arg.h"
 char *argv0;
@@ -136,6 +137,7 @@ int mvprintf(int x, int y, char *fmt, ...);
 Object *objbysym(char sym);
 void objwalk(Object *o, int offset);
 void quit(const Arg *arg);
+int readchar(void);
 void resize(int x, int y);
 void restart(const Arg *arg);
 void run(void);
@@ -259,6 +261,7 @@ choose(char *opts, const char *msgstr, ...) {
 	fprintf(stdout, CURPOS, cols - 1, 0);
 	vfprintf(stdout, msgstr, ap);
 	va_end(ap);
+	fflush(stdout);
 
 	ioblock(1);
 	while(!(o && *o) && (c = getkey()) != EOF) {
@@ -462,11 +465,11 @@ freescene(void) {
 /* XXX quick'n dirty implementation */
 int
 getkey(void) {
-	int key = getchar(), c;
+	int key = readchar(), c;
 
-	if(key != '\x1b' || getchar() != '[')
+	if(key != '\x1b' || readchar() != '[')
 		return key;
-	switch((c = getchar())) {
+	switch((c = readchar())) {
 	case 'A': key = KeyUp; break;
 	case 'B': key = KeyDown; break;
 	case 'C': key = KeyRight; break;
@@ -632,6 +635,12 @@ void
 quit(const Arg *arg) {
 	if(!arg->i || choose("ny", "Are you sure (y/[n])?") == 'y')
 		running = 0;
+}
+
+int
+readchar(void) {
+	char buf[1] = {0};
+	return (read(0, buf, 1) < 1 ? EOF : buf[0]);
 }
 
 void
